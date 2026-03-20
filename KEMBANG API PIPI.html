@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Fireworks Mobile Ready 🎆</title>
+<style>
+body {
+    margin: 0;
+    background: black;
+    overflow: hidden;
+}
+canvas { display: block; }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resizeCanvas(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+let rockets = [];
+let particles = [];
+const texts = ["PIPI","I LOVE U"];
+let textIndex = 0;
+
+// 🚀 ROKET
+class Rocket{
+    constructor(x,y,text){
+        this.x = x;
+        this.y = canvas.height;
+        this.tx = x;
+        this.ty = y;
+        this.text = text;
+        this.speed = 7;
+        this.angle = Math.atan2(y-this.y,x-this.x);
+        this.color = `hsl(${Math.random()*360},100%,60%)`;
+    }
+    update(){
+        this.x += Math.cos(this.angle)*this.speed;
+        this.y += Math.sin(this.angle)*this.speed;
+        if(Math.random()<0.4){
+            particles.push(new Particle(this.x,this.y,this.color,true));
+        }
+        if(Math.hypot(this.tx-this.x,this.ty-this.y)<10){
+            explodeText(this.tx,this.ty,this.text);
+            return true;
+        }
+        return false;
+    }
+    draw(){
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x,this.y,2,2);
+    }
+}
+
+// ✨ PARTIKEL
+class Particle{
+    constructor(x,y,color,trail=false,angle=null,hold=false){
+        this.x = x; this.y = y; this.color=color;
+        this.speed = trail ? Math.random()*2 : Math.random()*4+1;
+        this.angle = angle ?? Math.random()*Math.PI*2;
+        this.alpha = 1;
+        this.decay = hold ? 0.005 : Math.random()*0.02+0.01;
+        this.gravity = 0.05;
+        this.hold = hold;
+    }
+    update(){
+        if(!this.hold){
+            this.speed *= 0.96;
+            this.x += Math.cos(this.angle)*this.speed;
+            this.y += Math.sin(this.angle)*this.speed + this.gravity;
+        }else{
+            if(this.alpha<0.8) this.hold=false;
+        }
+        this.alpha -= this.decay;
+    }
+    draw(){
+        ctx.globalAlpha=this.alpha;
+        ctx.fillStyle=this.color;
+        ctx.fillRect(this.x,this.y,2.2,2.2);
+        ctx.globalAlpha=1;
+    }
+}
+
+// 💥 TEXT EXPLOSION
+function explodeText(x,y,text){
+    let c=document.createElement("canvas");
+    let t=c.getContext("2d");
+    c.width=400; c.height=200;
+    t.fillStyle="white";
+    t.font = text==="I LOVE U" ? "bold 80px Arial" : "bold 110px Arial";
+    t.textAlign="center"; t.textBaseline="middle";
+    t.fillText(text,200,100);
+
+    let data=t.getImageData(0,0,400,200).data;
+
+    for(let i=0;i<400;i+=3){
+        for(let j=0;j<200;j+=3){
+            let idx=(j*400+i)*4;
+            if(data[idx+3]>140){
+                let px=x+(i-200);
+                let py=y+(j-100);
+                let angle=Math.atan2(py-y,px-x);
+                particles.push(new Particle(px,py,"#ffffff",false,angle,true));
+                particles.push(new Particle(px,py,`hsl(${Math.random()*360},100%,60%)`,false,angle));
+            }
+        }
+    }
+}
+
+// 🎬 ANIMASI
+function animate(){
+    ctx.fillStyle="rgba(0,0,0,0.25)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    rockets.forEach((r,i)=>{if(r.update()) rockets.splice(i,1); r.draw();});
+    particles.forEach((p,i)=>{p.update(); p.draw(); if(p.alpha<=0) particles.splice(i,1);});
+
+    requestAnimationFrame(animate);
+}
+animate();
+
+// 👆 TAP / KLIK
+canvas.addEventListener("click",(e)=>{
+    let text = texts[textIndex];
+    textIndex=(textIndex+1)%texts.length;
+    rockets.push(new Rocket(e.clientX,e.clientY,text));
+});
+
+// 👆 TOUCH HP
+canvas.addEventListener("touchstart",(e)=>{
+    e.preventDefault();
+    let touch=e.touches[0];
+    let text=texts[textIndex];
+    textIndex=(textIndex+1)%texts.length;
+    rockets.push(new Rocket(touch.clientX,touch.clientY,text));
+},{passive:false});
+
+</script>
+
+</body>
+</html>
